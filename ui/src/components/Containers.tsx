@@ -3,11 +3,13 @@ import {Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
 import {Commit, SaveAlt} from '@mui/icons-material';
 import {type ContainerInfo} from '../docker';
 import {ActionIconButton} from './ActionIconButton';
+import {showPrompt} from './showPrompt';
+import {formatDateForFilename} from '../util';
 
 type ContainersProps = {
 	containers: ContainerInfo[];
-	onCommit: (container: ContainerInfo) => Promise<void>;
-	onExport: (container: ContainerInfo) => Promise<void>;
+	onCommit: (containerID: string, imageName: string) => Promise<void>;
+	onExport: (containerID: string, imageName: string) => Promise<void>;
 };
 
 type RunningState = Record<string, 'commit' | 'export' | null>;
@@ -15,10 +17,31 @@ type RunningState = Record<string, 'commit' | 'export' | null>;
 export const Containers: React.FC<ContainersProps> = ({containers, onCommit, onExport}) => {
 	const [running, setRunning] = useState<RunningState>({});
 
-	const handleAction = async (action: 'commit' | 'export', container: ContainerInfo, callback: (container: ContainerInfo) => Promise<void>) => {
-		setRunning((prev) => ({...prev, [container.ID]: action}));
+	const handleCommit = async (container: ContainerInfo) => {
+		const defaultImageName = `${container.Image}-snapshot-${formatDateForFilename(new Date())}`;
+		const imageName = await showPrompt({title: 'Commit container to image', label: 'Image name', defaultValue: defaultImageName});
+		if (!imageName) {
+			return;
+		}
+
+		setRunning((prev) => ({...prev, [container.ID]: 'commit'}));
 		try {
-			await callback(container);
+			await onCommit(container.ID, imageName);
+		} finally {
+			setRunning((prev) => ({...prev, [container.ID]: null}));
+		}
+	};
+
+	const handleExport = async (container: ContainerInfo) => {
+		const defaultImageName = `${container.Image}-snapshot-${formatDateForFilename(new Date())}`;
+		const imageName = await showPrompt({title: 'Commit container to image and export image', label: 'Image name', defaultValue: defaultImageName});
+		if (!imageName) {
+			return;
+		}
+
+		setRunning((prev) => ({...prev, [container.ID]: 'export'}));
+		try {
+			await onExport(container.ID, imageName);
 		} finally {
 			setRunning((prev) => ({...prev, [container.ID]: null}));
 		}
@@ -99,14 +122,14 @@ export const Containers: React.FC<ContainersProps> = ({containers, onCommit, onE
 											icon={<Commit fontSize="small" />}
 											loading={activeAction === 'commit'}
 											disabled={isRowDisabled}
-											onClick={() => handleAction('commit', c, onCommit)}
+											onClick={() => handleCommit(c)}
 										/>
 										<ActionIconButton
 											title="Export"
 											icon={<SaveAlt fontSize="small" />}
 											loading={activeAction === 'export'}
 											disabled={isRowDisabled}
-											onClick={() => handleAction('export', c, onExport)}
+											onClick={() => handleExport(c)}
 										/>
 									</TableCell>
 								</TableRow>

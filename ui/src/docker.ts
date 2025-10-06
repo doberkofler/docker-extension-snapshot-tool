@@ -17,3 +17,7 @@ export const fetchContainers = async (ddClient: dockerDesktopClientType): Promis
 export const commitContainer = async (ddClient: dockerDesktopClientType, containerID: string, imageName: string): Promise<void> => {
 	await ddClient.docker.cli.exec('commit', [containerID, imageName]);
 };
+
+export const exportImage = async (ddClient: dockerDesktopClientType, imageName: string, imageFilename: string): Promise<void> => {
+	await ddClient.docker.cli.exec('export', [imageName, '-o', imageFilename]);
+};
