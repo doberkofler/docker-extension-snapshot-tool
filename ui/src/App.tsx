@@ -18,22 +18,12 @@ const handleCommit = async (containerID: string, imageName: string): Promise<voi
 };
 
 const handleExport = async (containerID: string, imageName: string): Promise<void> => {
-	// Commit the container to an image and export the image to a tar file
 	try {
-		await commitContainer(ddClient, containerID, imageName);
+		const result = await ddClient.extension.vm?.service?.get('/hello');
+		toast(`The response from the server was ${JSON.stringify(result)}`, 'success');
 	} catch (error) {
-		toast(`Failed to commit container ${containerID}: ${errorToString('', error)}`, 'error');
+		toast(`Failed to connect to the backend: ${errorToString('', error)}`, 'error');
 	}
-
-	// Export the image to a tar file
-	/*
-	try {
-		await exportImage(ddClient, imageName, imageFilename);
-		toast(`Container ${containerID} committed successfully to image ${imageName} and exported to file ${imageFilename}`, 'success');
-	} catch (error) {
-		toast(`Failed to commit container ${containerID}: ${errorToString('', error)}`, 'error');
-	}
-	*/
 };
 
 export const App = () => {
