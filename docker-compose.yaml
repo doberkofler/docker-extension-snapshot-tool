@@ -1,3 +1,9 @@
 services:
-  DockerDesktopExtensionSnapshotTools:
+  snapshot-tools:
     image: ${DESKTOP_PLUGIN_IMAGE}
+    volumes:
+      - extension-data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  extension-data:

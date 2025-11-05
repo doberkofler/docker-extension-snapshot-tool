@@ -1,28 +1,22 @@
-FROM golang:1.24-alpine AS builder
-ENV CGO_ENABLED=0
-WORKDIR /backend
-COPY backend/go.* .
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    go mod download
-COPY backend/. .
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    go build -trimpath -ldflags="-s -w" -o bin/service
-
-FROM --platform=$BUILDPLATFORM node:24-alpine AS client-builder
-WORKDIR /ui
-# cache packages in layer
-COPY ui/package.json /ui/package.json
-COPY ui/package-lock.json /ui/package-lock.json
-RUN --mount=type=cache,target=/usr/src/app/.npm \
-    npm set cache /usr/src/app/.npm && \
-    npm ci
-# install
-COPY ui /ui
+# Build backend
+FROM --platform=$BUILDPLATFORM node:24-alpine AS backend-builder
+WORKDIR /build
+COPY backend/package*.json ./
+COPY backend/tsconfig.json ./
+COPY backend/src ./src
+RUN npm i
 RUN npm run build
 
-FROM alpine
+# Build frontend
+FROM --platform=$BUILDPLATFORM node:24-alpine AS client-builder
+WORKDIR /ui
+COPY ui/package.json /ui/package.json
+COPY ui /ui
+RUN npm i
+RUN npm run build
+
+# Production image
+FROM node:24-alpine
 LABEL org.opencontainers.image.title="Snapshot Tools" \
     org.opencontainers.image.description="Docker Desktop Snapshot Tools" \
     org.opencontainers.image.vendor="Dieter Oberkofler" \
@@ -35,9 +29,25 @@ LABEL org.opencontainers.image.title="Snapshot Tools" \
     com.docker.extension.categories="" \
     com.docker.extension.changelog=""
 
-COPY --from=builder /backend/bin/service /
-COPY docker-compose.yaml .
-COPY metadata.json .
-COPY snapshot.svg .
-COPY --from=client-builder /ui/build ui
-CMD /service -socket /run/guest-services/backend.sock
+# Install Docker CLI
+RUN apk add --no-cache docker-cli
+
+# Extension metadata files at root
+COPY docker-compose.yaml /docker-compose.yaml
+COPY metadata.json /metadata.json
+COPY snapshot.svg /snapshot.svg
+
+# Frontend setup
+COPY --from=client-builder /ui/build /ui
+
+# Backend setup
+WORKDIR /app
+COPY backend/package*.json ./
+RUN npm ci --only=production
+COPY --from=backend-builder /build/dist ./dist
+
+# Create data directory
+RUN mkdir -p /data
+
+# Start server
+CMD ["node", "dist/index.js"]
