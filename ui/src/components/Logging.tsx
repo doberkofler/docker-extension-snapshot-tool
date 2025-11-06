@@ -15,7 +15,7 @@ import {
 	Typography,
 } from '@mui/material';
 import {type LoggingMessageType, useLogger} from '../context/LoggingContext';
-import {formatDate} from '../util';
+import {formatDate} from '../utilties/util';
 
 type LoggingMessageDialogProps = {
 	open: boolean;

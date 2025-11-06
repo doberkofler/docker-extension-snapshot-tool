@@ -1,18 +1,11 @@
-# Build backend
-FROM --platform=$BUILDPLATFORM node:24-alpine AS backend-builder
-WORKDIR /build
-COPY backend/package*.json ./
-COPY backend/tsconfig.json ./
-COPY backend/src ./src
-RUN npm i
-RUN npm run build
-
 # Build frontend
 FROM --platform=$BUILDPLATFORM node:24-alpine AS client-builder
-WORKDIR /ui
-COPY ui/package.json /ui/package.json
-COPY ui /ui
+WORKDIR /build
+COPY package.json /build
+COPY ui /build/ui/
+COPY shared /build/shared/
 RUN npm i
+WORKDIR /build/ui
 RUN npm run build
 
 # Production image
@@ -37,17 +30,20 @@ COPY docker-compose.yaml /docker-compose.yaml
 COPY metadata.json /metadata.json
 COPY snapshot.svg /snapshot.svg
 
-# Frontend setup
-COPY --from=client-builder /ui/build /ui
+# Setup frontend
+COPY --from=client-builder /build/ui/build /ui
 
-# Backend setup
+# Setup backend
 WORKDIR /app
 COPY backend/package*.json ./
-RUN npm ci --only=production
-COPY --from=backend-builder /build/dist ./dist
+COPY backend/src ./src
+COPY shared/package.json ./shared/
+COPY shared/src ./shared/src
+RUN npm i --only=production
+WORKDIR /app
 
 # Create data directory
 RUN mkdir -p /data
 
 # Start server
-CMD ["node", "dist/index.js"]
+CMD ["node", "src/index.ts"]

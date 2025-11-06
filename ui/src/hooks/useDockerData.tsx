@@ -1,7 +1,7 @@
 import {useCallback, useEffect, useState} from 'react';
-import {useLogger} from './context/LoggingContext';
-import {type dockerDesktopClientType, type ContainerInfoType, type ImageInfoType, toastMessage, fetchContainers, fetchImages} from './docker';
-import {sortByStringProp} from './util';
+import {useLogger} from '../context/LoggingContext';
+import {type dockerDesktopClientType, type ContainerInfoType, type ImageInfoType, toastMessage, fetchContainers, fetchImages} from '../utilties/docker';
+import {sortByStringProp} from '../utilties/util';
 
 export type useDockerDataResultType = {
 	containers: ContainerInfoType[];

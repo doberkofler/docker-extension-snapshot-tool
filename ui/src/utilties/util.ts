@@ -1,4 +1,3 @@
-import util from 'node:util';
 import {z} from 'zod';
 
 /**
@@ -20,7 +19,7 @@ export const errorToString = (error: unknown) => {
 		}
 		return parts.join('\n');
 	} else {
-		return util.inspect(error, {showHidden: false, depth: 10, colors: false});
+		return JSON.stringify(error);
 	}
 };
 

@@ -4,7 +4,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import {DockerMuiV6ThemeProvider} from '@docker/docker-mui-theme';
 import {LoggingProvider} from './context/LoggingContext';
 
-import {App} from './App';
+import {App} from './components/App';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
 	<React.StrictMode>

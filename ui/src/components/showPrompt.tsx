@@ -1,5 +1,5 @@
 import {createRoot} from 'react-dom/client';
-import {PromptDialog} from '../components/PromptDialog';
+import {PromptDialog} from './PromptDialog';
 
 export const showPrompt = (options: {title: string; label?: string; defaultValue?: string}): Promise<string | null> => {
 	return new Promise((resolve) => {

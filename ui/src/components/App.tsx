@@ -1,19 +1,21 @@
 import {createDockerDesktopClient} from '@docker/extension-api-client';
-import {toastMessage, commitContainer} from './docker';
-import {useDockerData} from './useDockerData';
-import {Containers} from './components/Containers';
-import {Logging} from './components/Logging';
-import {Test} from './components/Test';
-import {errorToString} from './errorToString';
+import {toastMessage, commitContainer} from '../utilties/docker';
+import {useLogger} from '../context/LoggingContext';
+import {useDockerData} from '../hooks/useDockerData';
+import {Containers} from './/Containers';
+import {Logging} from './Logging';
+import {Test} from './Test';
+import {errorToString} from '../utilties/errorToString';
 
 const ddClient = createDockerDesktopClient();
 
 export const App = () => {
-	const {containers, images, loading, error, loadDockerData} = useDockerData(ddClient);
+	const {addMessage} = useLogger();
+	const {containers, images, loadDockerData} = useDockerData(ddClient);
 
 	const handleCommit = async (containerID: string, imageName: string): Promise<void> => {
 		try {
-			await commitContainer(ddClient, containerID, imageName);
+			await commitContainer(ddClient, addMessage, containerID, imageName);
 			loadDockerData();
 			toastMessage(ddClient, `Container ${containerID} committed successfully to image ${imageName}`, 'success');
 		} catch (error) {

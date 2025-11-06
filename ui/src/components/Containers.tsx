@@ -1,11 +1,11 @@
 import React, {useState} from 'react';
 import {Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography, IconButton, Tooltip, CircularProgress} from '@mui/material';
 import {Commit, SaveAlt} from '@mui/icons-material';
-import {type ContainerInfoType, type ImageInfoType} from '../docker';
+import {type ContainerInfoType, type ImageInfoType} from '../utilties/docker';
 import {useLogger, type addMessageType} from '../context/LoggingContext';
 import {ActionIconButton} from './ActionIconButton';
 import {showPrompt} from './showPrompt';
-import {escapeRegex, formatDateForFilename} from '../util';
+import {escapeRegex, formatDateForFilename} from '../utilties/util';
 
 type ContainersProps = {
 	containers: ContainerInfoType[];
