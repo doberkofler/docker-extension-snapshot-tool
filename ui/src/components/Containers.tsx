@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React from 'react';
 import {Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography} from '@mui/material';
 import {Commit} from '@mui/icons-material';
 import {containerCommit, type ContainerInfoType, type ImageInfoType, type dockerDesktopClientType} from '../utilties/docker';
@@ -11,10 +11,10 @@ type ContainersProps = {
 	readonly containers: ContainerInfoType[];
 	readonly images: ImageInfoType[];
 	readonly ddClient: dockerDesktopClientType;
+	readonly setOperationDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
+	readonly setOperationDialogDescription: React.Dispatch<React.SetStateAction<string>>;
 	readonly refresh: () => Promise<void>;
 };
-
-type RunningState = Record<string, 'commit' | 'export' | null>;
 
 const getDefaultImageName = (imageName: string, images: ImageInfoType[]): string => {
 	const filteredNames = images
@@ -41,8 +41,7 @@ const getDefaultImageName = (imageName: string, images: ImageInfoType[]): string
 	return `${imageName}-snapshot-1`;
 };
 
-export const Containers: React.FC<ContainersProps> = ({containers, images, ddClient, refresh}) => {
-	const [running, setRunning] = useState<RunningState>({});
+export const Containers: React.FC<ContainersProps> = ({containers, images, ddClient, setOperationDialogOpen, setOperationDialogDescription, refresh}) => {
 	const {addMessage} = useLogger();
 
 	const handleCommit = async (container: ContainerInfoType) => {
@@ -52,16 +51,17 @@ export const Containers: React.FC<ContainersProps> = ({containers, images, ddCli
 			return;
 		}
 
-		setRunning((prev) => ({...prev, [container.ID]: 'commit'}));
+		setOperationDialogDescription(`Commit container "${container.Names}" to image "${imageName}"`);
+		setOperationDialogOpen(true);
 		try {
 			await containerCommit(ddClient, container.ID, imageName);
 			await refresh();
 
-			addMessage(`Container "${container.Names}" committed successfully to image "${imageName}"`, '', 'log');
+			addMessage(`Container "${container.Names}" committed to image "${imageName}"`, '', 'success');
 		} catch (error) {
 			addMessage(`Failed to commit container "${container.Names}" to image "${imageName}"`, errorToString(error), 'error');
 		} finally {
-			setRunning((prev) => ({...prev, [container.ID]: null}));
+			setOperationDialogOpen(false);
 		}
 	};
 
@@ -108,9 +108,6 @@ export const Containers: React.FC<ContainersProps> = ({containers, images, ddCli
 				</TableHead>
 				<TableBody>
 					{containers.map((c) => {
-						const activeAction = running[c.ID];
-						const isRowDisabled = Boolean(activeAction);
-
 						return (
 							<TableRow
 								key={c.ID}
@@ -136,9 +133,8 @@ export const Containers: React.FC<ContainersProps> = ({containers, images, ddCli
 								<TableCell align="center">
 									<ActionIconButton
 										title="Commit"
+										size="small"
 										icon={<Commit fontSize="small" />}
-										loading={activeAction === 'commit'}
-										disabled={isRowDisabled}
 										onClick={() => {
 											void handleCommit(c);
 										}}

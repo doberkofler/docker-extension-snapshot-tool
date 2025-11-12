@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React from 'react';
 import {Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography} from '@mui/material';
 import {SaveAlt} from '@mui/icons-material';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -10,10 +10,10 @@ import {errorToString} from '../utilties/errorToString';
 type ImagesProps = {
 	readonly images: ImageInfoType[];
 	readonly ddClient: dockerDesktopClientType;
+	readonly setOperationDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
+	readonly setOperationDialogDescription: React.Dispatch<React.SetStateAction<string>>;
 	readonly refresh: () => Promise<void>;
 };
-
-type RunningState = Record<string, 'export' | 'delete' | null>;
 
 const getImageFilename = (path: string, name: string, tag: string): string => {
 	const safeName = name.replace(/[^\w.-]+/g, '_');
@@ -22,8 +22,7 @@ const getImageFilename = (path: string, name: string, tag: string): string => {
 	return `${path}/${safeName}_${safeTag}.tar`;
 };
 
-export const Images: React.FC<ImagesProps> = ({images, ddClient, refresh}) => {
-	const [running, setRunning] = useState<RunningState>({});
+export const Images: React.FC<ImagesProps> = ({images, ddClient, setOperationDialogOpen, setOperationDialogDescription, refresh}) => {
 	const {addMessage} = useLogger();
 
 	const handleExport = async (image: ImageInfoType) => {
@@ -36,28 +35,30 @@ export const Images: React.FC<ImagesProps> = ({images, ddClient, refresh}) => {
 
 		const fullPath = getImageFilename(result.filePaths[0], image.Repository, image.Tag);
 
-		setRunning((prev) => ({...prev, [image.ID]: 'export'}));
+		setOperationDialogDescription(`Export image "${image.Repository}:${image.Tag}" to file "${fullPath}"`);
+		setOperationDialogOpen(true);
 		try {
 			await imageExport(ddClient, image.ID, fullPath);
 			await refresh();
-			addMessage(`Image "${image.Repository}:${image.Tag}" committed successfully to file "${fullPath}"`, '', 'log');
+			addMessage(`Image "${image.Repository}:${image.Tag}" saved to file "${fullPath}"`, '', 'success');
 		} catch (error) {
 			addMessage(`Failed to commit container "${image.Repository}:${image.Tag}" to image "${fullPath}"`, errorToString(error), 'error');
 		} finally {
-			setRunning((prev) => ({...prev, [image.ID]: null}));
+			setOperationDialogOpen(false);
 		}
 	};
 
 	const handleDelete = async (image: ImageInfoType) => {
-		setRunning((prev) => ({...prev, [image.ID]: 'delete'}));
+		setOperationDialogDescription(`Delete image "${image.Repository}:${image.Tag}"`);
+		setOperationDialogOpen(true);
 		try {
 			await imageDelete(ddClient, image.ID);
 			await refresh();
-			addMessage(`Image "${image.Repository}:${image.Tag}" successfully deleted`, '', 'log');
+			addMessage(`Image "${image.Repository}:${image.Tag}" deleted`, '', 'success');
 		} catch (error) {
 			addMessage(`Failed to delete image "${image.Repository}:${image.Tag}"`, errorToString(error), 'error');
 		} finally {
-			setRunning((prev) => ({...prev, [image.ID]: null}));
+			setOperationDialogOpen(false);
 		}
 	};
 
@@ -104,9 +105,6 @@ export const Images: React.FC<ImagesProps> = ({images, ddClient, refresh}) => {
 				</TableHead>
 				<TableBody>
 					{images.map((c) => {
-						const activeAction = running[c.ID];
-						const isRowDisabled = Boolean(activeAction);
-
 						return (
 							<TableRow
 								key={c.ID}
@@ -122,18 +120,16 @@ export const Images: React.FC<ImagesProps> = ({images, ddClient, refresh}) => {
 								<TableCell align="center">
 									<ActionIconButton
 										title="Export"
+										size="small"
 										icon={<SaveAlt fontSize="small" />}
-										loading={activeAction === 'export'}
-										disabled={isRowDisabled}
 										onClick={() => {
 											void handleExport(c);
 										}}
 									/>
 									<ActionIconButton
 										title="Delete"
+										size="small"
 										icon={<DeleteIcon fontSize="small" />}
-										loading={activeAction === 'delete'}
-										disabled={isRowDisabled}
 										onClick={() => {
 											void handleDelete(c);
 										}}

@@ -3,7 +3,7 @@ import {createContext, useContext, useState, useMemo, ReactNode} from 'react';
 export type LoggingMessageType = {
 	id: number;
 	timestamp: Date;
-	severity: 'log' | 'warning' | 'error';
+	severity: 'success' | 'error' | 'info';
 	message: string;
 	context: string;
 };

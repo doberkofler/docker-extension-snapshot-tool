@@ -140,6 +140,8 @@ export const Logging: React.FC = () => {
 											overflow: 'hidden',
 											textOverflow: 'ellipsis',
 											maxWidth: 100,
+											color: e.severity === 'error' ? 'error.main' : e.severity === 'success' ? 'success.main' : 'text.primary',
+											fontWeight: 600,
 										}}
 									>
 										{e.severity}

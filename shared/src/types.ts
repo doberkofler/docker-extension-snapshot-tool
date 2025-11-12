@@ -14,13 +14,3 @@ export const dateFromStringSchema = z.string().transform((val, ctx) => {
 
 	return d;
 });
-
-export const StatusEnumShape = z.enum(['idle', 'running', 'complete', 'failed']);
-
-export const StatusShape = z.strictObject({
-	status: StatusEnumShape,
-	started: z.date().nullable(),
-	error: z.string().nullable(),
-	operation: z.enum(['commit', 'save']).nullable(),
-});
-export type StatusShapeType = z.infer<typeof StatusShape>;
