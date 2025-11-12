@@ -32,3 +32,16 @@ COPY snapshot.svg /snapshot.svg
 
 # Setup frontend
 COPY --from=client-builder /build/ui/build /ui
+
+
+# Setup backend
+WORKDIR /app
+COPY backend/package*.json ./
+COPY backend/src ./src
+COPY shared/package.json ./shared/
+COPY shared/src ./shared/src
+RUN npm i --only=production
+WORKDIR /app
+
+# Start server
+CMD ["node", "src/index.ts"]
