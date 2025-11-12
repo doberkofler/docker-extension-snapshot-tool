@@ -1,16 +1,16 @@
 import {useLogger} from '../context/LoggingContext';
-import {type dockerDesktopClientType, dockerGet} from '../utilties/docker';
-import {errorToString} from '../utilties/errorToString';
+import {type dockerDesktopClientType} from '../utilties/docker';
 import {Paper, Button} from '@mui/material';
 
 type Props = {
 	ddClient: dockerDesktopClientType;
 };
 
+// eslint-disable-next-line react/prop-types, @typescript-eslint/no-unused-vars
 export const Test: React.FC<Props> = ({ddClient}) => {
 	const {addMessage} = useLogger();
 
-	const handleTest = async (): Promise<void> => {
+	const handleTest = () => {
 		addMessage('handleTest', '', 'log');
 	};
 

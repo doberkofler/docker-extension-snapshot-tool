@@ -18,13 +18,15 @@ import {type LoggingMessageType, useLogger} from '../context/LoggingContext';
 import {formatDate} from '../utilties/util';
 
 type LoggingMessageDialogProps = {
-	open: boolean;
-	onClose: () => void;
-	message: LoggingMessageType | null;
+	readonly open: boolean;
+	readonly onClose: () => void;
+	readonly message: LoggingMessageType | null;
 };
 
-export const LoggingMessageDialog: React.FC<LoggingMessageDialogProps> = ({open, onClose, message}) => {
-	if (!message) return null;
+const LoggingMessageDialog: React.FC<LoggingMessageDialogProps> = ({open, onClose, message}) => {
+	if (!message) {
+		return null;
+	}
 
 	return (
 		<Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -69,10 +71,6 @@ export const Logging: React.FC = () => {
 		setSelected(message);
 		setOpen(true);
 	};
-
-	if (messages.length === 0) {
-		return null;
-	}
 
 	return (
 		<>

@@ -1,4 +1,4 @@
-import {createContext, useContext, useState, ReactNode} from 'react';
+import {createContext, useContext, useState, useMemo, ReactNode} from 'react';
 
 export type LoggingMessageType = {
 	id: number;
@@ -18,7 +18,7 @@ export type addMessageType = LoggingContextValue['addMessage'];
 
 const LoggingContext = createContext<LoggingContextValue | null>(null);
 
-export const LoggingProvider = ({children}: {children: ReactNode}) => {
+export const LoggingProvider = ({children}: {readonly children: ReactNode}) => {
 	const [messages, setMessages] = useState<LoggingMessageType[]>([]);
 
 	const addMessage = (message: string, context: string, severity: LoggingMessageType['severity']): void => {
@@ -36,11 +36,17 @@ export const LoggingProvider = ({children}: {children: ReactNode}) => {
 
 	const clear = (): void => setMessages([]);
 
-	return <LoggingContext.Provider value={{messages, addMessage, clear}}>{children}</LoggingContext.Provider>;
+	const value = useMemo(() => ({messages, addMessage, clear}), [messages]);
+
+	return <LoggingContext.Provider value={value}>{children}</LoggingContext.Provider>;
 };
 
 export const useLogger = (): LoggingContextValue => {
 	const ctx = useContext(LoggingContext);
-	if (!ctx) throw new Error('useLogger must be used within LoggingProvider');
+
+	if (!ctx) {
+		throw new Error('useLogger must be used within LoggingProvider');
+	}
+
 	return ctx;
 };

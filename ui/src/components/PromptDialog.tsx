@@ -2,11 +2,11 @@ import React, {useState} from 'react';
 import {Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button} from '@mui/material';
 
 type PromptDialogProps = {
-	open: boolean;
-	title: string;
-	label?: string;
-	defaultValue?: string;
-	onClose: (value: string | null) => void;
+	readonly open: boolean;
+	readonly title: string;
+	readonly label?: string;
+	readonly defaultValue?: string;
+	readonly onClose: (value: string | null) => void;
 };
 
 export const PromptDialog: React.FC<PromptDialogProps> = ({open, title, label = 'Enter value', defaultValue = '', onClose}) => {

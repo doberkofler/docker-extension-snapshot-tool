@@ -1,13 +1,10 @@
 import {createDockerDesktopClient} from '@docker/extension-api-client';
 import {errorToString, zDockerDateTime} from './util';
 import {type addMessageType} from '../context/LoggingContext';
-import {StatusShape, type StatusShapeType} from '@extension/shared/src/types';
 import z from 'zod';
 
 export type dockerDesktopClientType = ReturnType<typeof createDockerDesktopClient>;
 export type dockerExecvReturnType = ReturnType<dockerDesktopClientType['docker']['cli']['exec']>;
-
-type ResultType = {data: unknown; isError: boolean; error: string};
 
 const ContainerInfoShape = z.looseObject({
 	ID: z.string(),
@@ -34,46 +31,6 @@ export type ImageInfoType = z.infer<typeof ImageInfoShape>;
  * @param severity - The severity.
  */
 export const toastMessage = (ddClient: dockerDesktopClientType, message: string, severity: 'success' | 'error') => ddClient.desktopUI.toast[severity](message);
-
-/**
- * Execute docker fetch and parse json result.
- * @param ddClient - The docker desktop client.
- * @param addMessage - The handler to add a message to the logging console.
- * @param url - The url.
- * @returns A promise resolving to a json array when successful or null if not successful.
- */
-export const dockerGet = async (ddClient: dockerDesktopClientType, url: string): Promise<ResultType> => {
-	const result: ResultType = {data: null, isError: false, error: ''};
-
-	try {
-		result.data = await ddClient.extension.vm?.service?.get(url);
-	} catch (error) {
-		result.isError = true;
-		result.error = `Error in dockerGet "${url}"\n${errorToString(error)}`;
-	}
-
-	return result;
-};
-
-/**
- * Execute docker fetch and parse json result.
- * @param ddClient - The docker desktop client.
- * @param url - The url.
- * @param para - The arguments.
- * @returns A promise resolving to a json array when successful or null if not successful.
- */
-export const dockerPost = async (ddClient: dockerDesktopClientType, url: string, para: Record<string, unknown>): Promise<ResultType> => {
-	const result: ResultType = {data: null, isError: false, error: ''};
-
-	try {
-		result.data = await ddClient.extension.vm?.service?.post(url, para);
-	} catch (error) {
-		result.isError = true;
-		result.error = `Error in dockerPost "${url}"\n${errorToString(error)}`;
-	}
-
-	return result;
-};
 
 /**
  * Execute docker command and parse json result.
@@ -111,57 +68,20 @@ export const dockerExecJson = async (ddClient: dockerDesktopClientType, addMessa
 };
 
 /**
- * Fetch backend status.
- * @param ddClient - The docker desktop client.
- * @returns An promise resolvong to an array of containers.
- */
-export const fetchStatus = async (ddClient: dockerDesktopClientType, addMessage: addMessageType): Promise<StatusShapeType | null> => {
-	const {data, isError, error} = await dockerGet(ddClient, '/containers');
-	if (isError) {
-		addMessage('Error in fetchContainers', error, 'error');
-		return null;
-	}
-
-	//addMessage('fetchContainers: json', JSON.stringify(json), 'log');
-
-	try {
-		return StatusShape.parse(data);
-	} catch (error) {
-		const message = `Error parsing containers`;
-		const severity = 'error';
-
-		addMessage(message, errorToString(error), severity);
-		toastMessage(ddClient, message, severity);
-
-		return null;
-	}
-};
-
-/**
  * Fetch list of containers.
  * @param ddClient - The docker desktop client.
  * @returns An promise resolvong to an array of containers.
  */
-export const fetchContainers = async (ddClient: dockerDesktopClientType, addMessage: addMessageType): Promise<ContainerInfoType[]> => {
-	const {data, isError, error} = await dockerGet(ddClient, '/containers');
-	if (isError) {
-		addMessage('Error in fetchContainers', error, 'error');
-		return [];
+export const fetchContainers = async (ddClient: dockerDesktopClientType): Promise<ContainerInfoType[]> => {
+	const result = await ddClient.docker.cli.exec('ps', ['--all', '--format', '"{{json .}}"']);
+	const json = result.parseJsonLines();
+	const {data, success, error} = z.array(ContainerInfoShape).safeParse(json);
+
+	if (!success) {
+		throw new Error(z.prettifyError(error));
 	}
 
-	//addMessage('fetchContainers: json', JSON.stringify(json), 'log');
-
-	try {
-		return z.array(ContainerInfoShape).parse(data);
-	} catch (error) {
-		const message = `Error parsing containers`;
-		const severity = 'error';
-
-		addMessage(message, errorToString(error), severity);
-		toastMessage(ddClient, message, severity);
-
-		return [];
-	}
+	return data;
 };
 
 /**
@@ -169,26 +89,16 @@ export const fetchContainers = async (ddClient: dockerDesktopClientType, addMess
  * @param ddClient - The docker desktop client.
  * @returns An promise resolvong to an array of images.
  */
-export const fetchImages = async (ddClient: dockerDesktopClientType, addMessage: addMessageType): Promise<ImageInfoType[]> => {
-	const {data, isError, error} = await dockerGet(ddClient, '/images');
-	if (isError) {
-		addMessage('Error in fetchImages', error, 'error');
-		return [];
+export const fetchImages = async (ddClient: dockerDesktopClientType): Promise<ImageInfoType[]> => {
+	const result = await ddClient.docker.cli.exec('image', ['ls', '--all', '--format', '"{{json .}}"']);
+	const json = result.parseJsonLines();
+	const {data, success, error} = z.array(ImageInfoShape).safeParse(json);
+
+	if (!success) {
+		throw new Error(z.prettifyError(error));
 	}
 
-	//addMessage('fetchImages: json', JSON.stringify(json), 'log');
-
-	try {
-		return z.array(ImageInfoShape).parse(data);
-	} catch (error) {
-		const message = `Error parsing images`;
-		const severity = 'error';
-
-		addMessage(message, errorToString(error), severity);
-		toastMessage(ddClient, message, severity);
-
-		return [];
-	}
+	return data;
 };
 
 /**
@@ -198,24 +108,24 @@ export const fetchImages = async (ddClient: dockerDesktopClientType, addMessage:
  * @param imageName - The image name.
  * @returns A promise when done.
  */
-export const commitContainer = async (ddClient: dockerDesktopClientType, addMessage: addMessageType, containerId: string, imageName: string): Promise<void> => {
-	//await ddClient.docker.cli.exec('commit', [containerId, imageName]);
-
-	const {data, isError, error} = await dockerPost(ddClient, '/commit', {containerId, imageName});
-	if (isError) {
-		addMessage('Error in commitContainer', error, 'error');
-		return;
-	}
-
-	addMessage('fetchImages: json', JSON.stringify(data), 'log');
+export const containerCommit = async (ddClient: dockerDesktopClientType, containerId: string, imageName: string): Promise<void> => {
+	await ddClient.docker.cli.exec('commit', [containerId, imageName]);
 };
 
 /**
- * Fetch list of images.
- * @param imageName - The image name.
- * @param imageFilename - The image filename.
+ * Export image.
+ * @param imageId - The image id.
  * @returns A promise when done.
  */
-export const exportImage = async (ddClient: dockerDesktopClientType, addMessage: addMessageType, imageName: string, imageFilename: string): Promise<void> => {
-	await ddClient.docker.cli.exec('export', [imageName, '-o', imageFilename]);
+export const imageExport = async (ddClient: dockerDesktopClientType, imageId: string, imageFilename: string): Promise<void> => {
+	await ddClient.docker.cli.exec('save', [imageId, '-o', imageFilename]);
+};
+
+/**
+ * Delete image.
+ * @param imageId - The image id.
+ * @returns A promise when done.
+ */
+export const imageDelete = async (ddClient: dockerDesktopClientType, imageId: string): Promise<void> => {
+	await ddClient.docker.cli.exec('image', ['rm', imageId]);
 };

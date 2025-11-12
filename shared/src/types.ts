@@ -24,26 +24,3 @@ export const StatusShape = z.strictObject({
 	operation: z.enum(['commit', 'save']).nullable(),
 });
 export type StatusShapeType = z.infer<typeof StatusShape>;
-
-const BaseShape = z.strictObject({
-	status: z.enum(['idle', 'running', 'complete', 'failed']),
-	started: dateFromStringSchema,
-	error: z.string(),
-});
-const CommitShape = z.strictObject({
-	operation: z.literal('commit'),
-	containerId: z.string(),
-	imageName: z.string(),
-	...BaseShape.shape,
-});
-const SaveShape = z.strictObject({
-	operation: z.literal('save'),
-	imageId: z.string(),
-	exportPath: z.string(),
-	exportFilename: z.string(),
-	...BaseShape.shape,
-});
-
-const StateShape = z.discriminatedUnion('operation', [CommitShape, SaveShape]);
-
-export type State = z.infer<typeof StateShape>;

@@ -1,13 +1,13 @@
 import React from 'react';
-import {Tooltip, IconButton, CircularProgress, IconButtonProps} from '@mui/material';
+import {Tooltip, IconButton, CircularProgress} from '@mui/material';
 
 interface ActionIconButtonProps {
-	title: string;
-	color?: 'primary' | 'secondary';
-	icon: React.ReactNode;
-	loading?: boolean;
-	disabled?: boolean;
-	onClick: () => void;
+	readonly title: string;
+	readonly color?: 'primary' | 'secondary';
+	readonly icon: React.ReactNode;
+	readonly loading?: boolean;
+	readonly disabled?: boolean;
+	readonly onClick: () => void;
 }
 
 /**

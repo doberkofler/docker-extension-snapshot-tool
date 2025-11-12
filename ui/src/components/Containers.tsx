@@ -1,24 +1,24 @@
 import React, {useState} from 'react';
-import {Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography, IconButton, Tooltip, CircularProgress} from '@mui/material';
-import {Commit, SaveAlt} from '@mui/icons-material';
-import {type ContainerInfoType, type ImageInfoType} from '../utilties/docker';
-import {useLogger, type addMessageType} from '../context/LoggingContext';
+import {Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography} from '@mui/material';
+import {Commit} from '@mui/icons-material';
+import {containerCommit, type ContainerInfoType, type ImageInfoType, type dockerDesktopClientType} from '../utilties/docker';
+import {useLogger} from '../context/LoggingContext';
 import {ActionIconButton} from './ActionIconButton';
+import {errorToString} from '../utilties/errorToString';
 import {showPrompt} from './showPrompt';
-import {escapeRegex, formatDateForFilename} from '../utilties/util';
 
 type ContainersProps = {
-	containers: ContainerInfoType[];
-	images: ImageInfoType[];
-	onCommit: (containerID: string, imageName: string) => Promise<void>;
-	onExport: (containerID: string, imageName: string) => Promise<void>;
+	readonly containers: ContainerInfoType[];
+	readonly images: ImageInfoType[];
+	readonly ddClient: dockerDesktopClientType;
+	readonly refresh: () => Promise<void>;
 };
 
 type RunningState = Record<string, 'commit' | 'export' | null>;
 
-const getDefaultImageName = (imageName: string, images: ImageInfoType[], addMessage: addMessageType): string => {
+const getDefaultImageName = (imageName: string, images: ImageInfoType[]): string => {
 	const filteredNames = images
-		.filter((e) => e.Repository.startsWith(`${imageName}`))
+		.filter((e) => e.Repository.startsWith(imageName))
 		.sort((a, b) => a.CreatedAt.getTime() - b.CreatedAt.getTime())
 		.map((e) => e.Repository);
 
@@ -27,9 +27,9 @@ const getDefaultImageName = (imageName: string, images: ImageInfoType[], addMess
 	if (filteredNames.length > 0) {
 		const lastFilename = filteredNames[filteredNames.length - 1];
 		const prefix = `${imageName}-snapshot-`;
-		const escapedPrefix = escapeRegex(prefix);
+		//const escapedPrefix = escapeRegex(prefix);
 		if (lastFilename.startsWith(prefix)) {
-			const match = lastFilename.match(new RegExp(`^${prefix}(\\d+)`));
+			const match = new RegExp(`^${prefix}(\\d+)`).exec(lastFilename);
 			let snapshotNumber = match ? parseInt(match[1], 10) : null;
 			if (snapshotNumber !== null) {
 				snapshotNumber++;
@@ -41,12 +41,12 @@ const getDefaultImageName = (imageName: string, images: ImageInfoType[], addMess
 	return `${imageName}-snapshot-1`;
 };
 
-export const Containers: React.FC<ContainersProps> = ({containers, images, onCommit, onExport}) => {
+export const Containers: React.FC<ContainersProps> = ({containers, images, ddClient, refresh}) => {
 	const [running, setRunning] = useState<RunningState>({});
 	const {addMessage} = useLogger();
 
 	const handleCommit = async (container: ContainerInfoType) => {
-		const defaultImageName = getDefaultImageName(container.Image, images, addMessage);
+		const defaultImageName = getDefaultImageName(container.Image, images);
 		const imageName = await showPrompt({title: 'Commit container to image', label: 'Image name', defaultValue: defaultImageName});
 		if (!imageName) {
 			return;
@@ -54,22 +54,12 @@ export const Containers: React.FC<ContainersProps> = ({containers, images, onCom
 
 		setRunning((prev) => ({...prev, [container.ID]: 'commit'}));
 		try {
-			await onCommit(container.ID, imageName);
-		} finally {
-			setRunning((prev) => ({...prev, [container.ID]: null}));
-		}
-	};
+			await containerCommit(ddClient, container.ID, imageName);
+			await refresh();
 
-	const handleExport = async (container: ContainerInfoType) => {
-		const defaultImageName = `${container.Image}-snapshot-${formatDateForFilename(new Date())}`;
-		const imageName = await showPrompt({title: 'Commit container to image and export image', label: 'Image name', defaultValue: defaultImageName});
-		if (!imageName) {
-			return;
-		}
-
-		setRunning((prev) => ({...prev, [container.ID]: 'export'}));
-		try {
-			await onExport(container.ID, imageName);
+			addMessage(`Container "${container.Names}" committed successfully to image "${imageName}"`, '', 'log');
+		} catch (error) {
+			addMessage(`Failed to commit container "${container.Names}" to image "${imageName}"`, errorToString(error), 'error');
 		} finally {
 			setRunning((prev) => ({...prev, [container.ID]: null}));
 		}
@@ -136,7 +126,7 @@ export const Containers: React.FC<ContainersProps> = ({containers, images, onCom
 									<Typography
 										variant="body2"
 										sx={{
-											color: c.Status?.includes('Up') === true ? 'success.main' : 'error.main',
+											color: c.Status?.includes('Up') ? 'success.main' : 'error.main',
 											fontWeight: 500,
 										}}
 									>
@@ -149,14 +139,9 @@ export const Containers: React.FC<ContainersProps> = ({containers, images, onCom
 										icon={<Commit fontSize="small" />}
 										loading={activeAction === 'commit'}
 										disabled={isRowDisabled}
-										onClick={() => handleCommit(c)}
-									/>
-									<ActionIconButton
-										title="Export"
-										icon={<SaveAlt fontSize="small" />}
-										loading={activeAction === 'export'}
-										disabled={isRowDisabled}
-										onClick={() => handleExport(c)}
+										onClick={() => {
+											void handleCommit(c);
+										}}
 									/>
 								</TableCell>
 							</TableRow>

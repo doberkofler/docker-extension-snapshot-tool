@@ -36,7 +36,7 @@ export const escapeRegex = (str: string): string => str.replace(/[.*+?^${}()|[\]
  * @throws {Error} If string doesn't match expected format or produces invalid date
  */
 export const parseDockerDate = (input: string): Date => {
-	const match = input.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2}) ([+-]\d{4})/);
+	const match = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2}) ([+-]\d{4})/.exec(input);
 	if (!match) {
 		throw new Error('Invalid date format');
 	}
